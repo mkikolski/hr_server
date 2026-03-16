@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRV Biofeedback Control Panel</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="top-bar">
+            <div class="brand">
+                <div class="pulse-ring"></div>
+                <h1>HRV Biofeedback</h1>
+            </div>
+            <div class="status-indicators">
+                <div class="indicator" id="ind-polar">
+                    <span class="dot"></span>
+                    <span>Polar H10</span>
+                </div>
+                <div class="indicator" id="ind-headset">
+                    <span class="dot"></span>
+                    <span>Headset</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-layout">
+            <!-- Left Column: Controls & State -->
+            <section class="control-section">
+                <div class="card state-card">
+                    <h2>Session Progress</h2>
+                    <div class="stepper">
+                        <div class="step" data-step="IDLE">Idle</div>
+                        <div class="step" data-step="CONNECTING">Connecting</div>
+                        <div class="step" data-step="READY">Ready</div>
+                        <div class="step" data-step="CALIBRATION_TUTORIAL">Setup</div>
+                        <div class="step" data-step="HR_BASELINE">Baseline</div>
+                        <div class="step" data-step="HRV_TUTORIAL">HRV Setup</div>
+                        <div class="step" data-step="HRV_CALIBRATION">Calibration</div>
+                        <div class="step" data-step="THERAPY">Therapy</div>
+                        <div class="step" data-step="COMPLETE">Complete</div>
+                    </div>
+                    
+                    <div class="timer-display">
+                        <span id="time-elapsed">00:00</span>
+                        <span id="time-separator">/</span>
+                        <span id="time-total">--:--</span>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button id="btn-action" class="btn primary">Connect Devices</button>
+                        <button id="btn-skip" class="btn secondary hidden">Skip Tutorial</button>
+                        <button id="btn-stop" class="btn danger hidden">Stop Session</button>
+                    </div>
+                </div>
+
+                <div class="card log-card">
+                    <h2>System Log</h2>
+                    <div id="sys-log" class="log-container"></div>
+                </div>
+            </section>
+
+            <!-- Right Column: Live Data -->
+            <section class="data-section">
+                <!-- Live HR -->
+                <div class="card hr-card">
+                    <div class="hr-header">
+                        <h2>Live Heart Rate</h2>
+                        <div class="hr-value-container">
+                            <span id="hr-value">--</span>
+                            <span class="unit">BPM</span>
+                            <svg class="heart-icon" viewBox="0 0 512 512" width="24" height="24">
+                                <path fill="currentColor" d="M462.3 62.6C407.5 15.9 326 24.3 275.7 76.2L256 96.5l-19.7-20.3C186 24.3 104.5 15.9 49.7 62.6c-62.8 53.6-66.1 149.8-9.9 207.9l193.5 199.8c12.5 12.9 32.8 12.9 45.3 0l193.5-199.8c56.3-58.1 53-154.3-9.8-207.9z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="hr-chart"></canvas>
+                    </div>
+                    <div class="metrics-row">
+                        <div class="metric">
+                            <span class="label">RMSSD</span>
+                            <span class="value" id="rmssd-value">-- ms</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">SDNN</span>
+                            <span class="value" id="sdnn-value">-- ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="card results-card">
+                    <h2>Session Results</h2>
+                    <div class="results-grid">
+                        <div class="result-box">
+                            <span class="label">Baseline HR</span>
+                            <span class="value highlight" id="res-baseline">-- BPM</span>
+                        </div>
+                        <div class="result-box">
+                            <span class="label">Resonant Freq.</span>
+                            <span class="value highlight" id="res-freq">-- Hz</span>
+                            <span class="subtext" id="res-rate">(-- breaths/min)</span>
+                        </div>
+                    </div>
+                    <div id="hrv-segments-container" class="hidden segments-box">
+                        <h3>Calibration Segments</h3>
+                        <ul id="hrv-segments-list"></ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
