@@ -3,10 +3,13 @@ Diagnosis workflow state machine for the HRV Biofeedback Control Panel.
 Governs the full lifecycle of a biofeedback session from connection to completion.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import datetime
 from enum import Enum
+from typing import Dict, List, Optional
 
 from hrv_analysis import (
     compute_baseline_hr,
@@ -47,50 +50,50 @@ BASELINE_DURATION = 90  # seconds for HR baseline
 class SessionManager:
     """Manages the diagnosis workflow state machine."""
 
-    def __init__(self, ws: WSManager, polar: PolarManager, beacon: BeaconManager):
+    def __init__(self, ws: WSManager, polar: PolarManager, beacon: BeaconManager) -> None:
         self._ws = ws
         self._beacon = beacon
         self._polar = polar
         self._data = DataStore()
         self._state = SessionState.IDLE
-        self._timer_task: asyncio.Task | None = None
+        self._timer_task: Optional[asyncio.Task] = None
         self._elapsed = 0
         self._total_duration = 0
 
         # Baseline collection
-        self._baseline_hr_values: list[int] = []
+        self._baseline_hr_values: List[int] = []
 
         # HRV calibration
         self._current_segment_index = 0
-        self._segment_rr: list[float] = []
-        self._hrv_segments: dict[float, list[float]] = {}
+        self._segment_rr: List[float] = []
+        self._hrv_segments: Dict[float, List[float]] = {}
 
         # Results
-        self._baseline_mean: float | None = None
-        self._resonant_frequency: float | None = None
-        self._hrv_amplitudes: dict[float, float] = {}
+        self._baseline_mean: Optional[float] = None
+        self._resonant_frequency: Optional[float] = None
+        self._hrv_amplitudes: Dict[float, float] = {}
 
         # All RR intervals collected during session (for live metrics)
-        self._all_rr: list[float] = []
+        self._all_rr: List[float] = []
 
     @property
     def state(self) -> SessionState:
         return self._state
 
     @property
-    def baseline_mean(self) -> float | None:
+    def baseline_mean(self) -> Optional[float]:
         return self._baseline_mean
 
     @property
-    def resonant_frequency(self) -> float | None:
+    def resonant_frequency(self) -> Optional[float]:
         return self._resonant_frequency
 
-    async def _set_state(self, new_state: SessionState):
+    async def _set_state(self, new_state: SessionState) -> None:
         """Transition to a new state and notify clients."""
         old_state = self._state
         self._state = new_state
         self._data.log_state_change(new_state.value)
-        logger.info(f"State: {old_state.value} → {new_state.value}")
+        logger.info("State: %s -> %s", old_state.value, new_state.value)
         await self._ws.send_to_panel({
             "type": "state",
             "state": new_state.value,
@@ -98,7 +101,7 @@ class SessionManager:
             "total": 0,
         })
 
-    async def _on_hr_data(self, heartrate: int, rr_intervals: list[float]):
+    async def _on_hr_data(self, heartrate: int, rr_intervals: List[float]) -> None:
         """Callback invoked by PolarManager on every HR data packet."""
         timestamp = datetime.now().isoformat()
 
@@ -137,9 +140,9 @@ class SessionManager:
                 "timestamp": timestamp,
             })
 
-    async def handle_action(self, action: str):
+    async def handle_action(self, action: str) -> None:
         """Handle a diagnost action from the control panel."""
-        logger.info(f"Action received: {action} (state: {self._state.value})")
+        logger.info("Action received: %s (state: %s)", action, self._state.value)
 
         if action == "connect_polar":
             await self._do_connect_polar()
@@ -150,7 +153,7 @@ class SessionManager:
         elif action == "stop_session":
             await self._stop_session()
 
-    async def _do_connect_polar(self):
+    async def _do_connect_polar(self) -> None:
         """Phase 1: Scan and connect to the Polar H10."""
         if self._state != SessionState.IDLE:
             return
@@ -181,7 +184,7 @@ class SessionManager:
         # Phase 2: start beacon and wait for headset
         await self._do_connect_headset()
 
-    async def _do_connect_headset(self):
+    async def _do_connect_headset(self) -> None:
         """Phase 2: Start UDP beacon and wait for the headset to connect."""
         await self._set_state(SessionState.CONNECTING_HEADSET)
 
@@ -194,7 +197,7 @@ class SessionManager:
         # Start broadcasting beacon for headset discovery
         await self._beacon.start()
 
-    async def on_headset_connected(self):
+    async def on_headset_connected(self) -> None:
         """Called by app.py when the headset WebSocket connects."""
         # Stop the beacon — headset found us
         await self._beacon.stop()
@@ -210,7 +213,7 @@ class SessionManager:
         if self._state == SessionState.CONNECTING_HEADSET:
             await self._transition_to_ready()
 
-    async def _transition_to_ready(self):
+    async def _transition_to_ready(self) -> None:
         """Transition to the READY state once both devices are connected."""
         await self._ws.send_to_panel({
             "type": "connection_status",
@@ -219,7 +222,7 @@ class SessionManager:
         })
         await self._set_state(SessionState.READY)
 
-    async def _advance(self):
+    async def _advance(self) -> None:
         """Advance to the next step in the diagnosis workflow."""
         transitions = {
             SessionState.READY: self._start_calibration_tutorial,
@@ -233,7 +236,7 @@ class SessionManager:
         if handler:
             await handler()
 
-    async def _skip_tutorial(self):
+    async def _skip_tutorial(self) -> None:
         """Skip the current tutorial phase."""
         if self._state == SessionState.CALIBRATION_TUTORIAL:
             await self._ws.send_to_headset({
@@ -250,14 +253,14 @@ class SessionManager:
 
     # ── Phase Starters ──────────────────────────────────────────────
 
-    async def _start_calibration_tutorial(self):
+    async def _start_calibration_tutorial(self) -> None:
         await self._set_state(SessionState.CALIBRATION_TUTORIAL)
         await self._ws.send_to_headset({
             "type": "command",
             "action": "play_calibration_tutorial",
         })
 
-    async def _start_hr_baseline(self):
+    async def _start_hr_baseline(self) -> None:
         self._baseline_hr_values = []
         await self._set_state(SessionState.HR_BASELINE)
         await self._ws.send_to_headset({
@@ -266,7 +269,7 @@ class SessionManager:
         })
         await self._start_timer(BASELINE_DURATION, self._on_baseline_complete)
 
-    async def _on_baseline_complete(self):
+    async def _on_baseline_complete(self) -> None:
         """Called when the 90-second baseline period ends."""
         self._baseline_mean = compute_baseline_hr(self._baseline_hr_values)
         self._data.set_baseline_result(self._baseline_mean)
@@ -282,20 +285,20 @@ class SessionManager:
         })
         await self._set_state(SessionState.BASELINE_COMPLETE)
 
-    async def _start_hrv_tutorial(self):
+    async def _start_hrv_tutorial(self) -> None:
         await self._set_state(SessionState.HRV_TUTORIAL)
         await self._ws.send_to_headset({
             "type": "command",
             "action": "play_hrv_tutorial",
         })
 
-    async def _start_hrv_calibration(self):
+    async def _start_hrv_calibration(self) -> None:
         self._current_segment_index = 0
         self._hrv_segments = {}
         await self._set_state(SessionState.HRV_CALIBRATION)
         await self._run_hrv_segments()
 
-    async def _run_hrv_segments(self):
+    async def _run_hrv_segments(self) -> None:
         """Run through all 5 paced breathing segments sequentially."""
         for i, rate in enumerate(BREATHING_RATES):
             self._current_segment_index = i
@@ -311,7 +314,6 @@ class SessionManager:
             })
 
             # Update panel timer
-            total_remaining = (len(BREATHING_RATES) - i) * SEGMENT_DURATION
             await self._ws.send_to_panel({
                 "type": "hrv_segment",
                 "breathing_rate": rate,
@@ -331,7 +333,7 @@ class SessionManager:
         # All segments complete — compute resonant frequency
         await self._on_hrv_complete()
 
-    async def _on_hrv_complete(self):
+    async def _on_hrv_complete(self) -> None:
         """Called when all HRV calibration segments are complete."""
         self._resonant_frequency, self._hrv_amplitudes = compute_resonant_frequency(
             self._hrv_segments
@@ -349,7 +351,7 @@ class SessionManager:
         })
         await self._set_state(SessionState.CALIBRATION_COMPLETE)
 
-    async def _start_therapy(self):
+    async def _start_therapy(self) -> None:
         await self._set_state(SessionState.THERAPY)
         await self._ws.send_to_headset({
             "type": "command",
@@ -363,7 +365,7 @@ class SessionManager:
         self._total_duration = 0  # 0 = no limit
         self._timer_task = asyncio.create_task(self._therapy_timer())
 
-    async def _therapy_timer(self):
+    async def _therapy_timer(self) -> None:
         """Open-ended timer that counts up during therapy."""
         try:
             while self._state == SessionState.THERAPY:
@@ -378,7 +380,7 @@ class SessionManager:
         except asyncio.CancelledError:
             pass
 
-    async def _stop_session(self):
+    async def _stop_session(self) -> None:
         """Stop the current session, save data, and reset."""
         # Cancel any running timer
         if self._timer_task and not self._timer_task.done():
@@ -407,7 +409,7 @@ class SessionManager:
         # Reset for next session
         self._reset()
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Reset all internal state for a new session."""
         self._baseline_hr_values = []
         self._baseline_mean = None
@@ -422,7 +424,7 @@ class SessionManager:
 
     # ── Timer Utilities ─────────────────────────────────────────────
 
-    async def _start_timer(self, duration: int, on_complete):
+    async def _start_timer(self, duration: int, on_complete) -> None:
         """Start a countdown timer and call on_complete when finished."""
         self._elapsed = 0
         self._total_duration = duration
@@ -434,7 +436,7 @@ class SessionManager:
             self._run_timer(duration, on_complete)
         )
 
-    async def _run_timer(self, duration: int, on_complete):
+    async def _run_timer(self, duration: int, on_complete) -> None:
         """Run a countdown, sending elapsed/total updates each second."""
         try:
             for second in range(1, duration + 1):
@@ -451,7 +453,7 @@ class SessionManager:
             logger.info("Timer cancelled")
 
     async def _run_countdown(self, duration: int, total_elapsed_offset: int = 0,
-                              total_duration: int = 0):
+                              total_duration: int = 0) -> None:
         """Run a blocking countdown for a segment within HRV calibration."""
         for second in range(1, duration + 1):
             await asyncio.sleep(1)
@@ -463,7 +465,7 @@ class SessionManager:
                 "total": total_duration,
             })
 
-    async def handle_headset_message(self, message: dict):
+    async def handle_headset_message(self, message: dict) -> None:
         """Handle a message from the Unity headset."""
         msg_type = message.get("type")
         action = message.get("action")
@@ -477,5 +479,5 @@ class SessionManager:
         elif msg_type == "status" and action == "tutorial_complete":
             # Auto-advance when headset signals tutorial is done
             if self._state in (SessionState.CALIBRATION_TUTORIAL, SessionState.HRV_TUTORIAL):
-                logger.info(f"Headset reported {self._state.value} is complete. Auto-advancing.")
+                logger.info("Headset reported %s is complete. Auto-advancing.", self._state.value)
                 await self._advance()

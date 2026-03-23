@@ -3,6 +3,8 @@ FastAPI application for the HRV Biofeedback Control Panel.
 Serves the control panel UI and provides WebSocket endpoints.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -71,7 +73,7 @@ async def ws_panel(websocket: WebSocket):
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
-                logger.warning(f"Invalid JSON from panel: {raw}")
+                logger.warning("Invalid JSON from panel: %s", raw)
                 continue
 
             if message.get("type") == "action":
@@ -103,7 +105,7 @@ async def ws_headset(websocket: WebSocket):
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
-                logger.warning(f"Invalid JSON from headset: {raw}")
+                logger.warning("Invalid JSON from headset: %s", raw)
                 continue
 
             await session_manager.handle_headset_message(message)
