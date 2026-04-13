@@ -1,0 +1,128 @@
+# Add Server-Driven WebSocket Commands to BiofeedbackClient
+
+The current [BiofeedbackClient.cs](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/BiofeedbackClient.cs) uses a local random-trigger system in [Update()](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/MoveBirds.cs#13-20) during therapy mode to fire events (fireflies, birds). The goal is to add **three new WebSocket command handlers** so the Python server can directly control:
+
+1. **Breathing ball repositioning** — smooth move to a random point on a circle around the XR camera
+2. **Fireflies visibility** — show/hide the left and right firefly groups
+3. **Bird flyovers** — trigger bird flyover sequences
+
+## User Review Required
+
+> [!IMPORTANT]
+> These new commands run **alongside** the existing local random timer logic in [Update()](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/MoveBirds.cs#13-20). Should the local timer logic be **removed** or kept as a fallback?  
+> Currently I'm keeping it untouched — please confirm.
+
+> [!IMPORTANT]
+> The current script has no reference to the XR camera. I'll add an `XROrigin` reference and locate the camera via `Camera.main` (or `XROrigin.Camera`). Please confirm which approach you prefer, or if the camera reference is already available elsewhere.
+
+> [!IMPORTANT]
+> The **circle radius** and **movement speed** for the breathing ball repositioning need sensible defaults. I'll use `radius = 2.0f` and `moveDuration = 2.0f` seconds (smooth Lerp). Adjust as needed.
+
+## Proposed Changes
+
+### BiofeedbackClient
+
+#### [MODIFY] [BiofeedbackClient.cs](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/BiofeedbackClient.cs)
+
+**1. New fields** (added after existing field block):
+
+```csharp
+[Header("Breathing Ball Movement")]
+public float ballCircleRadius = 2.0f;   // radius of circle around player
+public float ballMoveDuration = 2.0f;   // seconds for smooth transition
+
+private bool _ballMoving = false;
+private Vector3 _ballMoveStart;
+private Vector3 _ballMoveTarget;
+private float _ballMoveElapsed;
+```
+
+**2. New [ProcessMessage](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/BiofeedbackClient.cs#270-307) cases** inside the `switch (msg.action)` block:
+
+| WebSocket action string | Behaviour |
+|---|---|
+| `"move_breathing_ball"` | Pick a random angle, compute a point on a circle of `ballCircleRadius` around `Camera.main`, start smooth coroutine/lerp move of `breathingBall` |
+| `"show_fireflies"` | `firefliesLeft.SetActive(true); firefliesRight.SetActive(true);` |
+| `"hide_fireflies"` | `firefliesLeft.SetActive(false); firefliesRight.SetActive(false);` |
+| `"start_birds_flyover"` | Reset bird positions to start, activate both bird GameObjects, set movement flag for [Update()](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/MoveBirds.cs#13-20) translation |
+
+**3. Smooth ball movement** — handled in [Update()](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/MoveBirds.cs#13-20) via a simple Lerp block:
+
+```csharp
+if (_ballMoving)
+{
+    _ballMoveElapsed += Time.deltaTime;
+    float t = Mathf.Clamp01(_ballMoveElapsed / ballMoveDuration);
+    t = t * t * (3f - 2f * t); // smoothstep
+    breathingBall.transform.position = Vector3.Lerp(_ballMoveStart, _ballMoveTarget, t);
+    if (t >= 1f) _ballMoving = false;
+}
+```
+
+**4. Helper method** `MoveBreathingBallToRandomPoint()`:
+
+```csharp
+private void MoveBreathingBallToRandomPoint()
+{
+    Transform cam = Camera.main.transform;
+    float angle = UnityEngine.Random.Range(0f, 360f) * Mathf.Deg2Rad;
+    Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * ballCircleRadius;
+    _ballMoveTarget = cam.position + offset;
+    _ballMoveTarget.y = breathingBall.transform.position.y; // keep same height
+    _ballMoveStart = breathingBall.transform.position;
+    _ballMoveElapsed = 0f;
+    _ballMoving = true;
+}
+```
+
+**5. Helper method** `StartBirdsFlyover()`:
+
+```csharp
+private void StartBirdsFlyover()
+{
+    birdsSmall.transform.position = birdsSmallStart;
+    birdsLarge.transform.position = birdsLargeStart;
+    birdsSmall.SetActive(true);
+    birdsLarge.SetActive(true);
+    birdsSmallRun = true;
+    birdsLargeRun = true;
+}
+```
+
+**6. Bird movement in [Update()](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/MoveBirds.cs#13-20)** — add after ball movement block:
+
+```csharp
+if (birdsSmallRun)
+    birdsSmall.transform.Translate(Vector3.forward * 2f * Time.deltaTime);
+if (birdsLargeRun)
+    birdsLarge.transform.Translate(Vector3.forward * 2f * Time.deltaTime);
+```
+
+**7. Updated [ServerMessage](file:///c:/Users/mkikolski/Biofeedback%20NCNI/Assets/Scripts/BiofeedbackClient.cs#257-267) class** — add optional field:
+
+```csharp
+public float angle; // optional: specific angle for breathing ball (degrees)
+```
+
+If the server sends an `angle` field, the ball will move to that specific point on the circle instead of a random one.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+Since this is a Unity XR project, automated unit testing is not practical for the visual/physics behaviour. Please verify by:
+
+1. **Build & deploy** to the VR headset
+2. **Send WebSocket test messages** from the Python server (or a test script) such as:
+   ```json
+   {"type": "command", "action": "move_breathing_ball"}
+   {"type": "command", "action": "show_fireflies"}
+   {"type": "command", "action": "hide_fireflies"}
+   {"type": "command", "action": "start_birds_flyover"}
+   ```
+3. **Check Unity console logs** for the corresponding `Debug.Log` messages
+4. Visually confirm:
+   - Breathing ball smoothly moves to a new position around the player
+   - Fireflies appear and disappear on command
+   - Birds fly across from their start positions

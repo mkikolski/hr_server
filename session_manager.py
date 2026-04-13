@@ -149,6 +149,25 @@ class SessionManager:
             await self._skip_tutorial()
         elif action == "stop_session":
             await self._stop_session()
+        elif action in ("move_breathing_ball", "show_fireflies",
+                        "hide_fireflies", "start_birds_flyover"):
+            await self._do_therapy_action(action)
+
+    async def _do_therapy_action(self, action: str):
+        """Forward a therapy action command to the Unity headset."""
+        if self._state != SessionState.THERAPY:
+            logger.warning(f"Therapy action '{action}' ignored — not in THERAPY state")
+            return
+
+        await self._ws.send_to_headset({
+            "type": "command",
+            "action": action,
+        })
+        logger.info(f"Sent therapy command to headset: {action}")
+        await self._ws.send_to_panel({
+            "type": "therapy_action_sent",
+            "action": action,
+        })
 
     async def _do_connect_polar(self):
         """Phase 1: Scan and connect to the Polar H10."""

@@ -210,16 +210,8 @@ h2 {
     min-height: 0;
 }
 
-.log-container {
-    flex: 1;
-    overflow-y: auto;
-    font-family: monospace;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
+
+
 
 .log-msg { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .log-msg .time { color: var(--accent-blue); margin-right: 8px; }
@@ -326,3 +318,97 @@ canvas {
 .segments-box ul { list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 0.9rem; font-family: monospace; }
 .segments-box li { display: flex; justify-content: space-between; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 4px; }
 .segments-box li.best { border-left: 2px solid var(--accent-green); color: var(--accent-green); }
+
+/* Therapy Controls */
+.therapy-card {
+    transition: opacity 0.3s ease;
+}
+
+.therapy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.therapy-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.therapy-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.therapy-icon {
+    font-size: 1.4rem;
+}
+
+.ball-btn:hover {
+    background-color: rgba(88, 166, 255, 0.12);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.firefly-show-btn:hover {
+    background-color: rgba(63, 185, 80, 0.12);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.firefly-hide-btn:hover {
+    background-color: rgba(248, 81, 73, 0.12);
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+}
+
+.birds-btn:hover {
+    background-color: rgba(210, 153, 34, 0.12);
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
+}
+
+/* Log container – scrollable */
+.log-container {
+    flex: 1;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 250px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.log-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+}
+

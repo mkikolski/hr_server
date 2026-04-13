@@ -15,6 +15,11 @@ const heartIcon = document.querySelector('.heart-icon');
 const btnAction = document.getElementById('btn-action');
 const btnSkip = document.getElementById('btn-skip');
 const btnStop = document.getElementById('btn-stop');
+const therapyControls = document.getElementById('therapy-controls');
+const btnMoveBall = document.getElementById('btn-move-ball');
+const btnShowFireflies = document.getElementById('btn-show-fireflies');
+const btnHideFireflies = document.getElementById('btn-hide-fireflies');
+const btnBirds = document.getElementById('btn-birds');
 const resBaseline = document.getElementById('res-baseline');
 const resFreq = document.getElementById('res-freq');
 const resRate = document.getElementById('res-rate');
@@ -121,11 +126,17 @@ function updateButtons(state) {
             break;
         case 'THERAPY':
             btnAction.classList.add('hidden');
+            therapyControls.classList.remove('hidden');
             break;
         case 'COMPLETE':
             btnAction.textContent = 'New Session';
             btnStop.classList.add('hidden');
             break;
+    }
+
+    // Hide therapy controls for all non-therapy states
+    if (state !== 'THERAPY') {
+        therapyControls.classList.add('hidden');
     }
 }
 
@@ -273,6 +284,16 @@ ws.onmessage = (event) => {
         hrvSegmentsCont.classList.remove('hidden');
     }
     
+    else if (data.type === 'therapy_action_sent') {
+        const labels = {
+            move_breathing_ball: 'Move Breathing Ball',
+            show_fireflies: 'Show Fireflies',
+            hide_fireflies: 'Hide Fireflies',
+            start_birds_flyover: 'Birds Flyover'
+        };
+        logMsg(`Sent to headset: <strong>${labels[data.action] || data.action}</strong>`);
+    }
+    
     else if (data.type === 'session_complete') {
         logMsg(`Session saved to ${data.file}`);
     }
@@ -303,6 +324,23 @@ btnStop.addEventListener('click', () => {
     if (confirm("Are you sure you want to stop the session? Data will be saved.")) {
         ws.send(JSON.stringify({ type: 'action', action: 'stop_session' }));
     }
+});
+
+// Therapy action buttons
+btnMoveBall.addEventListener('click', () => {
+    ws.send(JSON.stringify({ type: 'action', action: 'move_breathing_ball' }));
+});
+
+btnShowFireflies.addEventListener('click', () => {
+    ws.send(JSON.stringify({ type: 'action', action: 'show_fireflies' }));
+});
+
+btnHideFireflies.addEventListener('click', () => {
+    ws.send(JSON.stringify({ type: 'action', action: 'hide_fireflies' }));
+});
+
+btnBirds.addEventListener('click', () => {
+    ws.send(JSON.stringify({ type: 'action', action: 'start_birds_flyover' }));
 });
 
 // Init
