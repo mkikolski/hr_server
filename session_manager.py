@@ -159,8 +159,8 @@ class SessionManager:
             await self._skip_tutorial()
         elif action == "stop_session":
             await self._stop_session()
-        elif action == "restart_session":
-            await self._restart_session()
+        elif action == "new_session":
+            await self._new_session()
         elif action == "start_birds_flyover":
             await self._do_therapy_action(action)
 
@@ -180,30 +180,17 @@ class SessionManager:
             "action": action,
         })
 
-    async def _restart_session(self):
-        """Reset the session without dropping device connections."""
-        if self._state == SessionState.IDLE:
+    async def _new_session(self):
+        """Start a new session after completion, reusing existing device connections."""
+        if self._state != SessionState.COMPLETE:
             return
-
-        if self._timer_task and not self._timer_task.done():
-            self._timer_task.cancel()
-            self._timer_task = None
-
+        if self._polar.connected:
+            await self._polar.start_streaming(self._on_hr_data)
         await self._ws.send_to_headset({
             "type": "command",
             "action": "restart_therapy",
         })
-
-        filepath = self._data.save()
-        if filepath:
-            await self._ws.send_to_panel({
-                "type": "session_complete",
-                "file": str(filepath),
-            })
-
-        self._reset()
         self._data.start_session()
-
         await self._ws.send_to_panel({
             "type": "connection_status",
             "polar": self._polar.connected,

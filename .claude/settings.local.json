@@ -4,7 +4,8 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\mkikolski\\\\PycharmProjects\\\\heart_rate_streaming\" -Recurse -File)",
       "Bash(Select-Object -First 50)",
       "Bash(Format-Table -AutoSize)",
-      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('session_manager.py'\\).read\\(\\)\\); print\\('session_manager.py OK'\\)\")"
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('session_manager.py'\\).read\\(\\)\\); print\\('session_manager.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('session_manager.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
     ]
   }
 }

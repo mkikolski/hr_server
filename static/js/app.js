@@ -17,7 +17,6 @@ const btnSkip = document.getElementById('btn-skip');
 const btnStop = document.getElementById('btn-stop');
 const therapyControls = document.getElementById('therapy-controls');
 const btnBirds = document.getElementById('btn-birds');
-const btnRestartSession = document.getElementById('btn-restart-session');
 const resBaseline = document.getElementById('res-baseline');
 const resFreq = document.getElementById('res-freq');
 const resRate = document.getElementById('res-rate');
@@ -279,15 +278,15 @@ ws.onmessage = (event) => {
         updateSteps(data.state);
         updateButtons(data.state);
 
-        // Reset HRV history and extremes when leaving therapy (restart or stop)
+        // Reset HRV history and extremes when leaving therapy
         if (wasTherapy && data.state !== 'THERAPY') {
             rmssdHistory = [];
             hrvMaxEl.textContent = '-- ms';
             hrvMinEl.textContent = '-- ms';
         }
 
-        // Clear results on return to READY (after restart)
-        if (data.state === 'READY' && wasTherapy) {
+        // Clear results whenever we return to READY (new session)
+        if (data.state === 'READY') {
             resetResultsDisplay();
         }
 
@@ -387,7 +386,7 @@ btnAction.addEventListener('click', () => {
     if (currentState === 'IDLE') {
         ws.send(JSON.stringify({ type: 'action', action: 'connect_polar' }));
     } else if (currentState === 'COMPLETE') {
-        location.reload();
+        ws.send(JSON.stringify({ type: 'action', action: 'new_session' }));
     } else {
         ws.send(JSON.stringify({ type: 'action', action: 'next_step' }));
     }
@@ -405,12 +404,6 @@ btnStop.addEventListener('click', () => {
 
 btnBirds.addEventListener('click', () => {
     ws.send(JSON.stringify({ type: 'action', action: 'start_birds_flyover' }));
-});
-
-btnRestartSession.addEventListener('click', () => {
-    if (confirm("Restart the session? Current data will be saved and calibration will restart.")) {
-        ws.send(JSON.stringify({ type: 'action', action: 'restart_session' }));
-    }
 });
 
 // Init
