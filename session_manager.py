@@ -73,6 +73,10 @@ class SessionManager:
         # All RR intervals collected during session (for live metrics)
         self._all_rr: list[float] = []
 
+        # Therapy HRV extremes (reset each session)
+        self._therapy_max_rmssd: float | None = None
+        self._therapy_min_rmssd: float | None = None
+
     @property
     def state(self) -> SessionState:
         return self._state
@@ -102,22 +106,11 @@ class SessionManager:
         """Callback invoked by PolarManager on every HR data packet."""
         timestamp = datetime.now().isoformat()
 
-        # Always log
         self._data.log_hr(heartrate, rr_intervals)
         self._all_rr.extend(rr_intervals)
 
-        # Send to panel for live display
         rmssd = compute_rmssd(self._all_rr[-60:]) if len(self._all_rr) >= 2 else 0.0
         sdnn = compute_sdnn(self._all_rr[-60:]) if len(self._all_rr) >= 2 else 0.0
-
-        await self._ws.send_to_panel({
-            "type": "hr_update",
-            "heartrate": heartrate,
-            "rr_intervals": rr_intervals,
-            "rmssd": round(rmssd, 1),
-            "sdnn": round(sdnn, 1),
-            "timestamp": timestamp,
-        })
 
         # State-specific collection
         if self._state == SessionState.HR_BASELINE:
@@ -129,13 +122,30 @@ class SessionManager:
 
         elif self._state == SessionState.THERAPY:
             self._data.log_therapy_data(heartrate, rr_intervals)
-            # Stream raw data to headset during therapy
+            # Track HRV extremes for panel display
+            if rmssd > 0:
+                if self._therapy_max_rmssd is None or rmssd > self._therapy_max_rmssd:
+                    self._therapy_max_rmssd = rmssd
+                if self._therapy_min_rmssd is None or rmssd < self._therapy_min_rmssd:
+                    self._therapy_min_rmssd = rmssd
+            # Stream raw data to headset
             await self._ws.send_to_headset({
                 "type": "hr_data",
                 "heartrate": heartrate,
                 "rr_intervals": rr_intervals,
                 "timestamp": timestamp,
             })
+
+        await self._ws.send_to_panel({
+            "type": "hr_update",
+            "heartrate": heartrate,
+            "rr_intervals": rr_intervals,
+            "rmssd": round(rmssd, 1),
+            "sdnn": round(sdnn, 1),
+            "max_rmssd": round(self._therapy_max_rmssd, 1) if self._therapy_max_rmssd is not None else None,
+            "min_rmssd": round(self._therapy_min_rmssd, 1) if self._therapy_min_rmssd is not None else None,
+            "timestamp": timestamp,
+        })
 
     async def handle_action(self, action: str):
         """Handle a diagnost action from the control panel."""
@@ -149,8 +159,9 @@ class SessionManager:
             await self._skip_tutorial()
         elif action == "stop_session":
             await self._stop_session()
-        elif action in ("move_breathing_ball", "show_fireflies",
-                        "hide_fireflies", "start_birds_flyover"):
+        elif action == "restart_session":
+            await self._restart_session()
+        elif action == "start_birds_flyover":
             await self._do_therapy_action(action)
 
     async def _do_therapy_action(self, action: str):
@@ -168,6 +179,37 @@ class SessionManager:
             "type": "therapy_action_sent",
             "action": action,
         })
+
+    async def _restart_session(self):
+        """Reset the session without dropping device connections."""
+        if self._state == SessionState.IDLE:
+            return
+
+        if self._timer_task and not self._timer_task.done():
+            self._timer_task.cancel()
+            self._timer_task = None
+
+        await self._ws.send_to_headset({
+            "type": "command",
+            "action": "restart_therapy",
+        })
+
+        filepath = self._data.save()
+        if filepath:
+            await self._ws.send_to_panel({
+                "type": "session_complete",
+                "file": str(filepath),
+            })
+
+        self._reset()
+        self._data.start_session()
+
+        await self._ws.send_to_panel({
+            "type": "connection_status",
+            "polar": self._polar.connected,
+            "headset": self._ws.headset_connected,
+        })
+        await self._set_state(SessionState.READY)
 
     async def _do_connect_polar(self):
         """Phase 1: Scan and connect to the Polar H10."""
@@ -437,6 +479,8 @@ class SessionManager:
         self._all_rr = []
         self._elapsed = 0
         self._total_duration = 0
+        self._therapy_max_rmssd = None
+        self._therapy_min_rmssd = None
         self._data = DataStore()
 
     # ── Timer Utilities ─────────────────────────────────────────────
@@ -498,3 +542,13 @@ class SessionManager:
             if self._state in (SessionState.CALIBRATION_TUTORIAL, SessionState.HRV_TUTORIAL):
                 logger.info(f"Headset reported {self._state.value} is complete. Auto-advancing.")
                 await self._advance()
+        elif msg_type == "status" and action == "debug_skip_to_therapy":
+            logger.info("Headset requested debug skip to therapy")
+            if self._timer_task and not self._timer_task.done():
+                self._timer_task.cancel()
+                self._timer_task = None
+            if self._resonant_frequency is None:
+                self._resonant_frequency = 6.0
+            if self._baseline_mean is None:
+                self._baseline_mean = 70.0
+            await self._start_therapy()

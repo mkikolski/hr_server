@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HRV Biofeedback Control Panel</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Header -->
@@ -44,13 +46,13 @@
                         <div class="step" data-step="THERAPY">Therapy</div>
                         <div class="step" data-step="COMPLETE">Complete</div>
                     </div>
-                    
+
                     <div class="timer-display">
                         <span id="time-elapsed">00:00</span>
                         <span id="time-separator">/</span>
                         <span id="time-total">--:--</span>
                     </div>
-                    
+
                     <div class="action-buttons">
                         <button id="btn-action" class="btn primary">Connect Devices</button>
                         <button id="btn-skip" class="btn secondary hidden">Skip Tutorial</button>
@@ -61,21 +63,13 @@
                 <div id="therapy-controls" class="card therapy-card hidden">
                     <h2>Therapy Controls</h2>
                     <div class="therapy-grid">
-                        <button id="btn-move-ball" class="btn therapy-btn ball-btn">
-                            <span class="therapy-icon">🔵</span>
-                            Move Ball
-                        </button>
-                        <button id="btn-show-fireflies" class="btn therapy-btn firefly-show-btn">
-                            <span class="therapy-icon">✨</span>
-                            Show Fireflies
-                        </button>
-                        <button id="btn-hide-fireflies" class="btn therapy-btn firefly-hide-btn">
-                            <span class="therapy-icon">🌑</span>
-                            Hide Fireflies
-                        </button>
                         <button id="btn-birds" class="btn therapy-btn birds-btn">
                             <span class="therapy-icon">🐦</span>
                             Birds Flyover
+                        </button>
+                        <button id="btn-restart-session" class="btn therapy-btn restart-btn">
+                            <span class="therapy-icon">↺</span>
+                            Restart Session
                         </button>
                     </div>
                 </div>
@@ -96,7 +90,8 @@
                             <span id="hr-value">--</span>
                             <span class="unit">BPM</span>
                             <svg class="heart-icon" viewBox="0 0 512 512" width="24" height="24">
-                                <path fill="currentColor" d="M462.3 62.6C407.5 15.9 326 24.3 275.7 76.2L256 96.5l-19.7-20.3C186 24.3 104.5 15.9 49.7 62.6c-62.8 53.6-66.1 149.8-9.9 207.9l193.5 199.8c12.5 12.9 32.8 12.9 45.3 0l193.5-199.8c56.3-58.1 53-154.3-9.8-207.9z"/>
+                                <path fill="currentColor"
+                                    d="M462.3 62.6C407.5 15.9 326 24.3 275.7 76.2L256 96.5l-19.7-20.3C186 24.3 104.5 15.9 49.7 62.6c-62.8 53.6-66.1 149.8-9.9 207.9l193.5 199.8c12.5 12.9 32.8 12.9 45.3 0l193.5-199.8c56.3-58.1 53-154.3-9.8-207.9z" />
                             </svg>
                         </div>
                     </div>
@@ -112,6 +107,26 @@
                             <span class="label">SDNN</span>
                             <span class="value" id="sdnn-value">-- ms</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- HRV Chart (visible during therapy) -->
+                <div id="hrv-card" class="card hrv-card">
+                    <div class="hr-header">
+                        <h2>HRV — RMSSD</h2>
+                        <div class="hrv-extremes">
+                            <div class="metric">
+                                <span class="label">Session Max</span>
+                                <span class="value" id="hrv-max-value">-- ms</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Session Min</span>
+                                <span class="value" id="hrv-min-value">-- ms</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container hrv-chart-container">
+                        <canvas id="hrv-chart"></canvas>
                     </div>
                 </div>
 
@@ -140,4 +155,5 @@
 
     <script src="/static/js/app.js"></script>
 </body>
+
 </html>

@@ -224,7 +224,7 @@ h2 {
 }
 
 .hr-card {
-    flex: 2;
+    flex: 1.2;
 }
 
 .hr-header {
@@ -241,7 +241,7 @@ h2 {
 }
 
 #hr-value {
-    font-size: 4rem;
+    font-size: 2.8rem;
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -297,16 +297,16 @@ canvas {
 .result-box {
     background-color: rgba(255,255,255,0.03);
     border-radius: 8px;
-    padding: 15px;
+    padding: 10px 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
     border: 1px solid var(--border-color);
 }
 
-.result-box .label { color: var(--text-secondary); margin-bottom: 10px; font-size: 0.9rem; }
-.result-box .value { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
-.result-box .subtext { font-size: 0.85rem; color: var(--accent-blue); margin-top: 5px; }
+.result-box .label { color: var(--text-secondary); margin-bottom: 6px; font-size: 0.85rem; }
+.result-box .value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
+.result-box .subtext { font-size: 0.8rem; color: var(--accent-blue); margin-top: 4px; }
 
 .segments-box {
     margin-top: 20px;
@@ -378,6 +378,31 @@ canvas {
     background-color: rgba(210, 153, 34, 0.12);
     border-color: var(--accent-orange);
     color: var(--accent-orange);
+}
+
+.restart-btn:hover {
+    background-color: rgba(248, 81, 73, 0.12);
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+}
+
+/* HRV Card */
+.hrv-card {
+    flex: 1.2;
+}
+
+.hrv-chart-container {
+    min-height: 80px;
+}
+
+.hrv-extremes {
+    display: flex;
+    gap: 24px;
+}
+
+.hrv-extremes .metric .value {
+    font-size: 1.2rem;
+    color: var(--accent-green);
 }
 
 /* Log container – scrollable */
